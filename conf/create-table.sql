@@ -21,7 +21,7 @@ INSERT INTO roles VALUES ('2', 'azkaban');
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
   id int(11) NOT NULL AUTO_INCREMENT,
-  name varchar(255) NOT NULL,
+  name varchar(255) NOT NULL UNIQUE,
   password varchar(255) NOT NULL,
   email varchar(255) DEFAULT NULL,
   PRIMARY KEY (id)
@@ -41,4 +41,5 @@ CREATE TABLE user_groups (
 
 INSERT INTO user_groups VALUES ('1', '1', '1');
 INSERT INTO user_groups VALUES ('2', '2', '2');
+INSERT INTO user_groups VALUES ('3', '1', '2');
 

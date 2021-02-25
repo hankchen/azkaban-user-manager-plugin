@@ -1,0 +1,136 @@
+#*
+ * Copyright 2014 LinkedIn Corp.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *#
+
+<script type="text/javascript">
+
+$.namespace('azkaban');
+
+var userHeaderView;
+azkaban.userHeaderView = Backbone.View.extend({
+  events: {
+    "click #create-user-btn": "handleCreateUserJob"
+  },
+
+  initialize: function (settings) {
+    console.log("project header view initialize.");
+    if (settings.errorMsg && settings.errorMsg != "null") {
+      $('#messaging').addClass("alert-danger");
+      $('#messaging').removeClass("alert-success");
+      $('#messaging-message').html(settings.errorMsg);
+    }
+    else if (settings.successMsg && settings.successMsg != "null") {
+      $('#messaging').addClass("alert-success");
+      $('#messaging').removeClass("alert-danger");
+      $('#messaging-message').html(settings.successMsg);
+    }
+    else {
+      $('#messaging').removeClass("alert-success");
+      $('#messaging').removeClass("alert-danger");
+    }
+  },
+
+  handleCreateUserJob: function (evt) {
+    $('#create-user-modal').modal();
+  },
+
+  render: function () {
+  }
+});
+
+var CreateUserView;
+azkaban.CreateUserView = Backbone.View.extend({
+  events: {
+    "click #create-btn": "handleCreateUser"
+  },
+
+  initialize: function (settings) {
+    $("#modal-error-msg").hide();
+  },
+
+  handleCreateUser: function (evt) {
+    var userName = $('#uname').val();
+    var email = $('#email').val();
+    var password = $('#passwd').val();
+    console.log("Creating User");
+    $.ajax({
+      async: "false",
+      url: "usermanager",
+      dataType: "json",
+      type: "POST",
+      data: {
+        userAction: "createuser",
+        userName:userName,
+        email: email,
+        passwd: password,
+
+      },
+      success: function (data) {
+        if (data.status == "success") {
+          if (data.action == "redirect") {
+            window.location = data.path;
+          }
+        }
+        else {
+            $("#modal-error-msg").text("ERROR: " + data.message);
+            $("#modal-error-msg").slideDown("fast");
+        }
+      }
+    });
+  },
+
+  render: function () {
+  }
+});
+
+
+$(function () {
+  userHeaderView = new azkaban.userHeaderView({
+    el: $('#create-user'),
+    successMsg: successMessage,
+    errorMsg: errorMessage
+  });
+
+
+
+  createUserView = new azkaban.CreateUserView({
+    el: $('#create-user-modal')
+  });
+
+  /*验证邮箱*/
+  $("#email").blur(
+    function () {
+      var email=$("#email").val();
+      var reg=/^\w+@\w+(\.[a-zA-Z]{2,3}){1,2}$/;
+      if(reg.test(email)==false){
+        $("#modal-error-msg").text("ERROR: Invalid format of email." );
+        $("#modal-error-msg").slideDown("fast");
+      }
+    }
+  )
+
+  //绑定事件
+  $("#confirm").blur(function() {
+      console.info("verify password")
+      var pwd1=$("#passwd").val();
+      var pwd2=$("#confirm").val();
+      if (pwd1 !== pwd2) {
+       $("#modal-error-msg").text("ERROR: Password and confirm password should be the same." );
+       $("#modal-error-msg").slideDown("fast");
+      }
+
+  })
+});
+</script>
