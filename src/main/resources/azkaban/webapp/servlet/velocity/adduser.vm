@@ -27,16 +27,7 @@
     <script type="text/javascript" src="${context}/js/azkaban/view/time-graph.js"></script>
     <script type="text/javascript" src="${context}/js/azkaban/view/job-history.js"></script>
     <script type="text/javascript">
-      var contextURL = "${context}";
-      var currentTime = ${currentTime};
-      var timezone = "${timezone}";
-      var errorMessage = null;
-      var successMessage = null;
 
-      var projectId = "$projectId";
-      var projectName = "$projectName";
-      var jobName = "$jobid";
-      var dataSeries = $dataSeries;
     </script>
     <link rel="stylesheet" type="text/css" href="${context}/css/morris.css" />
   </head>
@@ -47,18 +38,77 @@
   #parse ("azkaban/webapp/servlet/velocity/errormsg.vm")
 #else
 
-   <div class="container-full">
+    <div class="az-page-header">
+      <div class="container-full">
+        <div class="row">
+          <div class="header-title">
+            <h1><a href="/index">UserManager</a></h1>
+          </div>
+          <div class="header-control">
 
-  #parse ("azkaban/webapp/servlet/velocity/alerts.vm")
-
-
-
-  <div class="row">
-    <div class="col-xs-12">
-      <div class="well well-clear well-sm" id="timeGraph">
-      UserManager Page
+          </div>
+        </div>
       </div>
-  </div>
+    </div>
+
+    <div class="container-full">
+          <div class="alert alert-dismissable alert-messaging" id="messaging">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+            <p id="messaging-message"></p>
+          </div>
+
+
+          <div class="row row-offcanvas row-offcanvas-left">
+            <div class="col-xs-6 col-sm-3 sidebar-offcanvas">
+              <ul class="nav nav-pills nav-stacked">
+                <li
+                    #if ($userList)
+                        class="active"
+                    #end
+                ><a href="/usermanager">Users</a></li>
+                <li
+                    #if ($groupList)
+                        class="active"
+                    #end
+                ><a href="/usermanager?groups">Groups</a></li>
+                <li
+                    #if ($roleList)
+                        class="active"
+                    #end
+                ><a href="/usermanager?roles">Roles</a></li>
+                <li><a href="/usermanager?adduser"> Add User</a></li>
+
+              </ul>
+            </div>
+            <div class="modal-content">
+                    <div class="modal-body">
+                      <div class="alert alert-danger" id="modal-error-msg">$error_msg</div>
+                      <fieldset class="form-horizontal">
+                        <div class="form-group">
+                          <label for="path" class="col-sm-2 control-label">Name</label>
+                          <div class="col-sm-10">
+                            <input id="path" name="project" type="text" class="form-control"
+                                   placeholder="Project name">
+                          </div>
+                        </div>
+                        <div class="form-group">
+                          <label for="description" class="col-sm-2 control-label">Description</label>
+                          <div class="col-sm-10">
+                            <textarea id="description" name="description" rows="2" cols="40"
+                                      class="form-control" placeholder="Project description"></textarea>
+                          </div>
+                        </div>
+                      </fieldset>
+                    </div>
+                    <div class="modal-footer">
+                      <input name="action" type="hidden" value="create">
+                      <input name="redirect" type="hidden" value="$!context/">
+                      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                      <button type="button" class="btn btn-primary" id="create-btn">Create User</button>
+                    </div>
+                  </div>
+
+
 
 #end
   </body>
