@@ -2,17 +2,20 @@ package azkaban.user;
 
 import azkaban.database.AzkabanDataSource;
 import azkaban.database.DataSourceUtils;
+import azkaban.db.DatabaseOperator;
+import azkaban.utils.Pair;
 import azkaban.utils.Props;
+import azkaban.utils.Triple;
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.apache.log4j.Logger;
-
+import azkaban.user.JdbcUserHandlerSet.*;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -21,146 +24,145 @@ import java.util.List;
 public class JdbcUserManager implements UserManager {
 
     private static final Logger logger = Logger.getLogger(JdbcUserManager.class);
+    private  DatabaseOperator dbOperator;
+    private final AzkabanDataSource dataSource;
 
-    private final AzkabanDataSource datasource;
 
 
     public JdbcUserManager(Props props)  {
 
-        datasource = DataSourceUtils.getDataSource(props);
+        dataSource = DataSourceUtils.getDataSource(props);
+        this.dbOperator=new DatabaseOperator(new QueryRunner(dataSource));
+
+    }
+    public void initTables() {
+
+    }
+
+    private List<Pair<Integer,String>> getUserGroup(int userId) throws UserManagerException {
+        List<Pair<Integer,String>> groupList= Collections.emptyList();
+        try {
+            groupList=this.dbOperator.query(GroupResultHandler.SELECT_GROUP_BY_USER,new GroupResultHandler(),userId);
+        } catch (SQLException e) {
+            logger.error("Get group ERROR", e.fillInStackTrace());
+            throw new UserManagerException("Get user group error.",e);
+        }
+        return groupList;
+    }
+    private List<String> getUserGroupRoles(int userId) throws UserManagerException {
+
+        String sql="select r.name as role_name from user_groups ug join `groups` g on ug.group_id=g.id join group_role gr on g.id=gr.group_id join roles r on gr.role_id = r.id where ug.user_id=" + userId;
+        List<String> ls = null;
+        return ls;
 
     }
 
 
-
-
     public User getUser(String username, String password) throws UserManagerException {
         User user = null;
-        Connection conn = null;
-        PreparedStatement statment = null;
-        ResultSet result = null;
-
+        UserResultHandler handler=new UserResultHandler();
+        if (username == null || username.trim().isEmpty()) {
+            throw new UserManagerException("user name is required.");
+        } else if (password == null || password.trim().isEmpty()) {
+            throw new UserManagerException("password is required");
+        }
         try {
-            conn = datasource.getConnection();
-            statment = conn.prepareStatement("select * from users where name= ? and password= ?");
-            statment.setString(1, username);
-            statment.setString(2, password);
-            result = statment.executeQuery();
-
-            if (result.next()) {
-                int user_id = result.getInt("id");
-                user = new User(result.getString("name"));
-                user.setEmail(result.getString("email"));
-                resolveGroupRoles(user_id, user);
+           List<Triple<Integer,String,User>> userList= this.dbOperator.query(
+                   UserResultHandler.SELECT_USER_BY_NAME_PASSWD,handler,username,stringToMD5(password));
+            if (userList.size()==1) {
+                Triple<Integer,String,User> u=userList.get(0);
+                int userId = u.getFirst();
+                user = u.getThird();
+                String agentUser=u.getSecond();
+                resolveGroupRoles(userId, user);
                 user.setPermissions(new User.UserPermissions() {
                     @Override
                     public boolean hasPermission(final String permission) {
                         return true;
+                        //TODO
                     }
 
                     @Override
                     public void addPermission(final String permission) {
+                        //TODO
                     }
                 });
             }
+//            else{
+//                throw new UserManagerException("Invalid user name or password.");
+//            }
 
 
         } catch (SQLException e) {
-            logger.error("Get User ERROR", e.fillInStackTrace());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (SQLException e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error("Get user ERROR", e.fillInStackTrace());
+            throw new UserManagerException("Get user ERROR",e);
         }
         return user;
     }
 
 
-    private void resolveGroupRoles(int user_id, User user) {
-        Connection conn = null;
-        PreparedStatement statment = null;
-        ResultSet result = null;
+    private void resolveGroupRoles(int userId, User user) {
         try {
-            conn = datasource.getConnection();
-            statment = conn.prepareStatement("select name from groups where id in(select group_id from user_groups where user_id = ?)");
-            statment.setInt(1, user_id);
-            result = statment.executeQuery();
-            while (result.next()) {
-                user.addGroup(result.getString("name"));
+            List<Pair<Integer,String>> groupList=this.dbOperator.query(GroupResultHandler.SELECT_GROUP_BY_USER,new GroupResultHandler(),userId);
+            for (Pair<Integer,String> g:groupList){
+                user.addGroup(g.getSecond());
+                logger.info(g.getSecond());
             }
+
         } catch (SQLException e) {
-            logger.error("Get Group ERROR", e.fillInStackTrace());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (SQLException e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error("Get group ERROR", e.fillInStackTrace());
+        }
+    }
+
+    public void deleteUser(String userName) throws UserManagerException{
+        try {
+            this.dbOperator.update(UpdateHandler.DELETE_USER,userName);
+        } catch (SQLException e) {
+            logger.error("Delete user ERROR", e.fillInStackTrace());
+            throw new UserManagerException("Delete user error." ,e);
         }
     }
 
 
-
-    public void addUser(String userName,String email,String passwd) throws UserManagerException {
-        PreparedStatement statment = null;
-        ResultSet result = null;
-        Connection conn=null;
+    public void addUser(String userName,String email,String passwd,String roles,String agent) throws UserManagerException {
         try {
-            conn=datasource.getConnection();;
-            String sql="insert into users(name,email,password) values (?, ?, ?)";
-            statment=conn.prepareStatement(sql);
-            statment.setString(1,userName);
-            statment.setString(2,email);
-            statment.setString(3,passwd);
-            statment.execute();
+            this.dbOperator.update(UpdateHandler.INSERT_USER,userName,email,stringToMD5(passwd),roles,agent);
         } catch (SQLException e) {
-            logger.error("Add User ERROR", e.fillInStackTrace());
-            throw new UserManagerException("Add User SQL ERROR :" +e.getMessage());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (Exception e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error("Add user ERROR", e.fillInStackTrace());
+            throw new UserManagerException("Add user error." ,e);
         }
 
     }
     public boolean validateUser(String username) {
-        Boolean rs= false;
-        String sql = String.format("select name from users where name='%s' ", username);
+        Boolean isUser= false;
         try {
-            Connection conn=datasource.getConnection();
-            String name = (String) DataBaseUtils.executeWithScalar(conn,sql);
-            if (name!=null){
-                rs=true;
+            String userName=this.dbOperator.query(ScalarHandlerQuery.SELECT_USER_BY_NAME,new ScalarHandler<String>(),username);
+            if (userName!=null){
+                isUser=true;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.fillInStackTrace());
         }
-        return rs;
+        return isUser;
     }
 
     public boolean validateGroup(String group) {
-        Boolean rs= false;
-        String sql = String.format("select name from groups where name='%s' ", group);
+        Boolean isGroup= false;
         try {
-            Connection conn=datasource.getConnection();
-            String name = (String) DataBaseUtils.executeWithScalar(conn,sql);
-            if (name!=null){
-                rs=true;
+            String groupName=this.dbOperator.query(ScalarHandlerQuery.SELECT_GROUP_BY_NAME,new ScalarHandler<String>(),group);
+            if (groupName!=null){
+                isGroup=true;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.fillInStackTrace());
         }
-        return rs;
+        return isGroup;
     }
 
     public Role getRole(String roleName) {
         //TODO
         String sql = "select * from roles where role='%s'";
-        return null;
+        return new Role("admin",new Permission(Permission.Type.ADMIN));
     }
 
     public boolean validateProxyUser(String proxyUser, User user) {
@@ -168,101 +170,66 @@ public class JdbcUserManager implements UserManager {
         return true;
     }
 
-    public void initTables() {
 
-    }
-
-    public List<User> fatchAllUsers() {
+    public List<User> getAllUsers () {
         List<User> users = new ArrayList<User>();
-        Connection conn = null;
-        PreparedStatement statment = null;
-        ResultSet result = null;
-
+        final UserResultHandler handler=new UserResultHandler();
         try {
-            conn = datasource.getConnection();
-            statment = conn.prepareStatement("select * from users");
-
-            result = statment.executeQuery();
-
-            while (result.next()) {
-                User user = new User(result.getString("name"));
-                user.setEmail(result.getString("email"));
-                users.add(user);
-            }
-
+          List<Triple<Integer,String,User>> userSet=  this.dbOperator.query(UserResultHandler.SELECT_ALL_USER,handler);
+          for(Triple<Integer,String,User> u: userSet){
+              users.add(u.getThird());
+          }
         } catch (SQLException e) {
-            logger.error("Fatch All User ERROR", e.fillInStackTrace());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (Exception e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error(e.getMessage());
+//            throw new UserManagerException("Fetch all users error.",e);
         }
         return users;
     }
 
-    public List<String> fatchAllGroup() {
-        List<String> groupList = new ArrayList<String>();
-        Connection conn = null;
-        PreparedStatement statment = null;
-        ResultSet result = null;
 
+    public List<String> getAllGroup() {
+        List<String> groupList = new ArrayList<String>();
+        final GroupResultHandler handler=new GroupResultHandler();
         try {
-            conn = datasource.getConnection();
-            statment = conn.prepareStatement("select * from groups");
-            result = statment.executeQuery();
-            while (result.next()) {
-                groupList.add(result.getString("name"));
+            List<Pair<Integer,String>> groups=this.dbOperator.query(GroupResultHandler.SELECT_All_GROUP,handler);
+            for(Pair<Integer,String> g:groups){
+                groupList.add(g.getSecond());
             }
         } catch (SQLException e) {
-            logger.error("Fatch All Group ERROR", e.fillInStackTrace());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (Exception e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error(e.getMessage());
+//            throw new UserManagerException("Fetch all groups error.",e);
         }
         return groupList;
     }
 
-    public List<String> fetchAllRoles() {
+    public List<String> getAllRoles() {
         List<String> rolesList = new ArrayList<String>();
-        Connection conn = null;
-        PreparedStatement statment = null;
-        ResultSet result = null;
-
+        final RoleResultHandler handler=new RoleResultHandler();
         try {
-            conn = datasource.getConnection();
-            statment = conn.prepareStatement("select * from roles");
-            result = statment.executeQuery();
-            while (result.next()) {
-                rolesList.add(result.getString("name"));
+            List<Pair<Integer,String>> roles=this.dbOperator.query(RoleResultHandler.SELECT_All_ROLE,handler);
+            for(Pair<Integer,String> r:roles){
+                rolesList.add(r.getSecond());
             }
         } catch (SQLException e) {
-            logger.error("Fatch All Roles ERROR", e.fillInStackTrace());
-        } finally {
-            try {
-                DataBaseUtils.closeConnection(conn, statment, result);
-            } catch (Exception e) {
-                logger.error(e.fillInStackTrace());
-            }
+            logger.error(e.getMessage());
+//            throw new UserManagerException("Fetch all roles error.",e);
         }
         return rolesList;
     }
+
+
     public static String stringToMD5(String plainText) {
         byte[] secretBytes = null;
         try {
             secretBytes = MessageDigest.getInstance("md5").digest(
                     plainText.getBytes());
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("没有这个md5算法！");
+            throw new RuntimeException("Encrypt error");
         }
         String md5code = new BigInteger(1, secretBytes).toString(16);
         for (int i = 0; i < 32 - md5code.length(); i++) {
             md5code = "0" + md5code;
         }
-        return md5code;
+        return new StringBuffer(md5code).reverse().toString();
     }
 }

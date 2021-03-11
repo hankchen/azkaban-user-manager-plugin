@@ -18,6 +18,27 @@
 
 $.namespace('azkaban');
 
+
+//delete user
+function deleteUser(userId) {
+  var userManagerURL = contextURL + "/usermanager"
+  var redirectURL = contextURL + "/usermanager"
+  var requestData = {
+    "userAction": "deleteUser",
+    "userId": userId
+  };
+  console.log("delete User");
+  var successHandler = function (data) {
+    if (data.error) {
+      $('#errorMsg').text(data.error);
+    }
+    else {
+      window.location = redirectURL;
+    }
+  };
+  $.post(userManagerURL, requestData, successHandler, "json");
+}
+
 var userHeaderView;
 azkaban.userHeaderView = Backbone.View.extend({
   events: {
@@ -25,7 +46,7 @@ azkaban.userHeaderView = Backbone.View.extend({
   },
 
   initialize: function (settings) {
-    console.log("project header view initialize.");
+    console.log("user header view initialize.");
     if (settings.errorMsg && settings.errorMsg != "null") {
       $('#messaging').addClass("alert-danger");
       $('#messaging').removeClass("alert-success");
@@ -53,7 +74,7 @@ azkaban.userHeaderView = Backbone.View.extend({
 var CreateUserView;
 azkaban.CreateUserView = Backbone.View.extend({
   events: {
-    "click #create-btn": "handleCreateUser"
+    "click #create-u-btn": "handleCreateUser"
   },
 
   initialize: function (settings) {
@@ -133,4 +154,6 @@ $(function () {
 
   })
 });
+
+
 </script>

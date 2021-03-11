@@ -51,23 +51,35 @@
         <dependency>
             <groupId>azkaban</groupId>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/azkaban-web-server-3.46.0.jar</systemPath>
+            <systemPath>${project.basedir}/lib/azkaban-web-server-0.1.0-SNAPSHOT.jar</systemPath>
             <artifactId>azkaban-web-server</artifactId>
-            <version>3.46.0</version>
+<!--            <version>3.46.0</version>-->
         </dependency>
         <dependency>
             <groupId>azkaban</groupId>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/azkaban-common-3.46.0.jar</systemPath>
+            <systemPath>${project.basedir}/lib/azkaban-common-0.1.0-SNAPSHOT.jar</systemPath>
             <artifactId>azkaban-common</artifactId>
             <version>3.46.0</version>
         </dependency>
         <dependency>
             <groupId>azkaban</groupId>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/az-core-3.46.0.jar</systemPath>
+            <systemPath>${project.basedir}/lib/az-core-0.1.0-SNAPSHOT.jar</systemPath>
             <artifactId>azkaban-core</artifactId>
             <version>3.46.0</version>
+        </dependency>
+        <dependency>
+            <groupId>azkaban</groupId>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/azkaban-db-0.1.0-SNAPSHOT.jar</systemPath>
+            <artifactId>azkaban-db</artifactId>
+            <version>3.46.0</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
         </dependency>
     </dependencies>
 

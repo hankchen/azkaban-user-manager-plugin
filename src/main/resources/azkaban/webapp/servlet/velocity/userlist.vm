@@ -100,8 +100,12 @@
                      <thead>
                      <tr>
                     <th>#</th>
-                       <th>UserName</th>
+                       <th>User Name</th>
                        <th>Email</th>
+                       <th>Agent User</th>
+                       <th>Groups</th>
+                       <th>Roles</th>
+                       <th colspan="2" class="action ignoresort">Action</th>
                      </tr>
                      </thead>
                      <tbody>
@@ -119,11 +123,31 @@
                            <td class="tb-name">
                              $!user.email
                            </td>
+                           <td class="tb-name">
+                             
+                           </td>
+                           <td class="tb-name">
+                             
+                           </td>
+                           <td class="tb-name">
+                             
+                           </td>
+                           <td>
+                             <button type="button" id="removeUser" class="btn btn-sm btn-danger pull-right"
+                                     onclick="deleteUser('${user.userId}')">Delete
+                             </button>
+                           </td>
+                           <td>
+                             <button type="button" id="editUser" class="btn btn-sm btn-primary"
+                                     onclick="editUser('${user.userId}')">
+                               Edit
+                             </button>
+                           </td>
                          </tr>
                          #end
                        #else
                        <tr>
-                         <td class="last" colspan="9">No Users Found</td>
+                         <td class="last" colspan="5">No Users Found</td>
                        </tr>
                        #end
                      </tbody>
@@ -188,12 +212,12 @@
                       #end
                     </tbody>
                   </table>
-            #end
+              #end
             </div>
           </div>
 
     <div>
-## Modal dialog to be displayed to create a new project.
+## Modal dialog to be displayed to create a new user.
 
   <div class="modal" id="create-user-modal">
     <div class="modal-dialog">
@@ -234,13 +258,34 @@
                                placeholder="********">
                       </div>
                     </div>
+
+                    <div class="form-group">
+                      <label for="roles" class="col-sm-2 control-label">Roles</label>
+                      <div class="col-sm-10">
+                        <select id="roles"   class="form-control">
+                            <option value=1>Admin</option>
+                            <option value=2>Read</option>
+                            <option value=3>Write</option>
+                            <option value=4>Execute</option>
+                            <option value=5>Schedule</option>
+                            <option value=6>Metrics</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="proxyuser" class="col-sm-2 control-label">Proxy User</label>
+                      <div class="col-sm-10">
+                        <input id="proxyuser" name="proxyuser" type="text" class="form-control"
+                               placeholder="Proxy User">
+                      </div>
+                    </div>
                   </fieldset>
                 </div>
         <div class="modal-footer">
-          <input name="user_action" type="hidden" value="createuser">
+          <input name="user_action" type="hidden" value="createUser">
           <input name="redirect" type="hidden" value="$!context/">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="create-btn">Create User</button>
+          <button type="button" class="btn btn-primary" id="create-u-btn">Create User</button>
         </div>
       </div>
     </div>
