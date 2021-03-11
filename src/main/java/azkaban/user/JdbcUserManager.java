@@ -116,6 +116,7 @@ public class JdbcUserManager implements UserManager {
 
     public void deleteUser(String userName) throws UserManagerException{
         try {
+            logger.info("Delete user:"+userName);
             this.dbOperator.update(UpdateHandler.DELETE_USER,userName);
         } catch (SQLException e) {
             logger.error("Delete user ERROR", e.fillInStackTrace());
@@ -126,6 +127,7 @@ public class JdbcUserManager implements UserManager {
 
     public void addUser(String userName,String email,String passwd,String roles,String agent) throws UserManagerException {
         try {
+            logger.info("Add new user:"+userName);
             this.dbOperator.update(UpdateHandler.INSERT_USER,userName,email,stringToMD5(passwd),roles,agent);
         } catch (SQLException e) {
             logger.error("Add user ERROR", e.fillInStackTrace());
@@ -162,7 +164,7 @@ public class JdbcUserManager implements UserManager {
     public Role getRole(String roleName) {
         //TODO
         String sql = "select * from roles where role='%s'";
-        return new Role("admin",new Permission(Permission.Type.ADMIN));
+        return new Role("admin",new Permission(Permission.Type.METRICS));
     }
 
     public boolean validateProxyUser(String proxyUser, User user) {

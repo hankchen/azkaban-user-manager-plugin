@@ -85,6 +85,8 @@ azkaban.CreateUserView = Backbone.View.extend({
     var userName = $('#uname').val();
     var email = $('#email').val();
     var password = $('#passwd').val();
+    var roles = $('#userRoles').val();
+    var proxyUser = $('#proxyUser').val();
     console.log("Creating User");
     $.ajax({
       async: "false",
@@ -92,10 +94,12 @@ azkaban.CreateUserView = Backbone.View.extend({
       dataType: "json",
       type: "POST",
       data: {
-        userAction: "createuser",
+        userAction: "createUser",
         userName:userName,
         email: email,
         passwd: password,
+        userRoles:roles,
+        proxyuser:proxyUser
 
       },
       success: function (data) {
