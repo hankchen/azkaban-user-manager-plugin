@@ -130,8 +130,8 @@ public class UserManagerServlet extends LoginAbstractAzkabanServlet {
                     final String password = getParam(req, "passwd");
                     final String roles=getParam(req,"userRoles");
                     final String agentUser=getParam(req,"proxyuser");
-                    logger.info("username:" + username + ";");
-                    jdbcUM.addUser(username, email, password,roles,agentUser);
+                    final String groups=getParam(req,"userGroup");
+                    jdbcUM.addUser(username, email, password,roles,agentUser,groups);
                     status = "success";
                     action = "redirect";
                     final String redirect = "usermanager";

@@ -116,30 +116,30 @@
                              $velocityCount
                            </td>
                            <td class="tb-name">
-                             <a href="${context}/usermanager?username=${user.userId}">
-                                    $user.userId
+                             <a href="${context}/usermanager?username=${user.get("userName")}">
+                                    ${user.get("userName")}
                              </a>
                            </td>
                            <td class="tb-name">
-                             $!user.email
+                             ${user.get("Email")}
                            </td>
                            <td class="tb-name">
-                             
+                             ${user.get("userAgent")}
                            </td>
                            <td class="tb-name">
-                             
+                             ${user.get("Groups")}
                            </td>
                            <td class="tb-name">
-                             
+                             ${user.get("Roles")}
                            </td>
                            <td>
                              <button type="button" id="removeUser" class="btn btn-sm btn-danger pull-right"
-                                     onclick="deleteUser('${user.userId}')">Delete
+                                     onclick="deleteUser('user.get("userName")')">Delete
                              </button>
                            </td>
                            <td>
                              <button type="button" id="editUser" class="btn btn-sm btn-primary"
-                                     onclick="editUser('${user.userId}')">
+                                     onclick="editUser('user.get("userName")')">
                                Edit
                              </button>
                            </td>
@@ -258,17 +258,24 @@
                                placeholder="********">
                       </div>
                     </div>
+                    <div class="form-group">
+                      <label for="userGroup" class="col-sm-2 control-label">User Group</label>
+                      <div class="col-sm-10">
+                        <input id="userGroup" name="userGroup" type="text" class="form-control"
+                               placeholder="User Group">
+                      </div>
+                    </div>
 
                     <div class="form-group">
                       <label for="roles" class="col-sm-2 control-label">Roles</label>
                       <div class="col-sm-10">
                         <select id="userRoles" name="userRoles"  class="form-control">
-                            <option value=1>Admin</option>
-                            <option value=2>Read</option>
-                            <option value=3>Write</option>
-                            <option value=4>Execute</option>
-                            <option value=5>Schedule</option>
-                            <option value=6>Metrics</option>
+                            <option value="admin">Admin</option>
+                            <option value="read">Read</option>
+                            <option value="write">Write</option>
+                            <option value="execute">Execute</option>
+                            <option value="schedule">Schedule</option>
+                            <option value="metrics">Metrics</option>
                         </select>
                       </div>
                     </div>

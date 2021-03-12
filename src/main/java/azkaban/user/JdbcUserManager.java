@@ -3,6 +3,7 @@ package azkaban.user;
 import azkaban.database.AzkabanDataSource;
 import azkaban.database.DataSourceUtils;
 import azkaban.db.DatabaseOperator;
+import azkaban.db.SQLTransaction;
 import azkaban.utils.Pair;
 import azkaban.utils.Props;
 import azkaban.utils.Triple;
@@ -14,9 +15,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by meng on 2018/4/21.
@@ -35,9 +34,7 @@ public class JdbcUserManager implements UserManager {
         this.dbOperator=new DatabaseOperator(new QueryRunner(dataSource));
 
     }
-    public void initTables() {
 
-    }
 
     private List<Pair<Integer,String>> getUserGroup(int userId) throws UserManagerException {
         List<Pair<Integer,String>> groupList= Collections.emptyList();
@@ -73,8 +70,9 @@ public class JdbcUserManager implements UserManager {
                 Triple<Integer,String,User> u=userList.get(0);
                 int userId = u.getFirst();
                 user = u.getThird();
-                String agentUser=u.getSecond();
-                resolveGroupRoles(userId, user);
+                for (Pair<Integer,String> g:getUserGroup(userId)){
+                    user.addGroup(g.getSecond());
+                }
                 user.setPermissions(new User.UserPermissions() {
                     @Override
                     public boolean hasPermission(final String permission) {
@@ -88,9 +86,9 @@ public class JdbcUserManager implements UserManager {
                     }
                 });
             }
-//            else{
-//                throw new UserManagerException("Invalid user name or password.");
-//            }
+            else{
+                throw new UserManagerException("Invalid user name or password.");
+            }
 
 
         } catch (SQLException e) {
@@ -101,18 +99,18 @@ public class JdbcUserManager implements UserManager {
     }
 
 
-    private void resolveGroupRoles(int userId, User user) {
-        try {
-            List<Pair<Integer,String>> groupList=this.dbOperator.query(GroupResultHandler.SELECT_GROUP_BY_USER,new GroupResultHandler(),userId);
-            for (Pair<Integer,String> g:groupList){
-                user.addGroup(g.getSecond());
-                logger.info(g.getSecond());
-            }
-
-        } catch (SQLException e) {
-            logger.error("Get group ERROR", e.fillInStackTrace());
-        }
-    }
+//    private void resolveGroupRoles(int userId, User user) {
+//        try {
+//            List<Pair<Integer,String>> groupList=this.dbOperator.query(GroupResultHandler.SELECT_GROUP_BY_USER,new GroupResultHandler(),userId);
+//            for (Pair<Integer,String> g:groupList){
+//                user.addGroup(g.getSecond());
+//                logger.info(g.getSecond());
+//            }
+//
+//        } catch (SQLException e) {
+//            logger.error("Get group ERROR", e.fillInStackTrace());
+//        }
+//    }
 
     public void deleteUser(String userName) throws UserManagerException{
         try {
@@ -125,10 +123,31 @@ public class JdbcUserManager implements UserManager {
     }
 
 
-    public void addUser(String userName,String email,String passwd,String roles,String agent) throws UserManagerException {
+    public void addUser(String userName,String email,String passwd,String roles,String agent,String groups) throws UserManagerException {
+        final SQLTransaction insertUserAndGroup = transOperator -> {
+            transOperator.update(UpdateHandler.INSERT_USER,userName,email,stringToMD5(passwd),roles,agent);
+            Long user_id=transOperator.getLastInsertId();
+
+            if (!("".equals(groups) || groups==null)) {
+                final List<Pair<Integer,String>> grps=this.dbOperator.query(GroupResultHandler.SELECT_All_GROUP,
+                        new GroupResultHandler());
+                for(String gName:groups.split(",")){
+                    for(Pair<Integer,String> g:grps){
+                        if(gName.equals(g)){
+                            this.dbOperator.update(UpdateHandler.INSERT_GROUP,user_id,g.getFirst());
+                        }
+
+                    }
+                }
+
+            }
+            transOperator.getConnection().commit();
+
+            return null;
+        };
         try {
             logger.info("Add new user:"+userName);
-            this.dbOperator.update(UpdateHandler.INSERT_USER,userName,email,stringToMD5(passwd),roles,agent);
+            this.dbOperator.transaction(insertUserAndGroup);
         } catch (SQLException e) {
             logger.error("Add user ERROR", e.fillInStackTrace());
             throw new UserManagerException("Add user error." ,e);
@@ -162,24 +181,63 @@ public class JdbcUserManager implements UserManager {
     }
 
     public Role getRole(String roleName) {
-        //TODO
-        String sql = "select * from roles where role='%s'";
-        return new Role("admin",new Permission(Permission.Type.METRICS));
+        Permission permission=new Permission();
+        try {
+            String permissions=this.dbOperator.query(ScalarHandlerQuery.SELECT_PERMISSION_BY_ROLE,new ScalarHandler<String>(),roleName);
+            List<Permission.Type> pType= new ArrayList<>();
+            for(String p:permissions.split(",")){
+                switch (p) {
+                    case "admin":permission.addPermission(Permission.Type.ADMIN);break;
+                    case "read":permission.addPermission(Permission.Type.READ);break;
+                    case "write":permission.addPermission(Permission.Type.WRITE);break;
+                    case "execute":permission.addPermission(Permission.Type.EXECUTE);break;
+                    case "schedule":permission.addPermission(Permission.Type.SCHEDULE);break;
+                    default:
+                        permission.addPermission(Permission.Type.METRICS);
+                }
+
+            }
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        }
+        return new Role(roleName,permission);
     }
 
     public boolean validateProxyUser(String proxyUser, User user) {
-        //TODO
-        return true;
+        boolean isProxy=false;
+        try {
+            List<Triple<Integer,String,User>> users= this.dbOperator.query(UserResultHandler.SELECT_USER_BY_NAME,new UserResultHandler(),user.getUserId());
+            if(!users.isEmpty()){
+                Triple<Integer,String,User> userTripe=users.get(0);
+                if(proxyUser.equals(userTripe.getSecond())){
+                    isProxy=true;
+                }
+            }
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+//            throw new UserManagerException("Validate proxy error.",e);
+        }
+
+        return isProxy;
     }
 
 
-    public List<User> getAllUsers () {
-        List<User> users = new ArrayList<User>();
+    public List<Map<String,String>> getAllUsers () {
+        List<Map<String,String>> users = new ArrayList<Map<String,String>>();
+
         final UserResultHandler handler=new UserResultHandler();
         try {
           List<Triple<Integer,String,User>> userSet=  this.dbOperator.query(UserResultHandler.SELECT_ALL_USER,handler);
-          for(Triple<Integer,String,User> u: userSet){
-              users.add(u.getThird());
+          for(Triple<Integer,String,User> user: userSet){
+              Map<String,String> userInfo=new HashMap<String,String>();
+              userInfo.put("userId",user.getFirst().toString());
+              userInfo.put("userAgent",user.getSecond());
+              User u=user.getThird();
+              userInfo.put("userName",u.getUserId());
+              userInfo.put("Email",u.getEmail());
+              userInfo.put("Groups",String.join(",",u.getGroups()));
+              userInfo.put("Roles",String.join(",",u.getRoles()));
+              users.add(userInfo);
           }
         } catch (SQLException e) {
             logger.error(e.getMessage());

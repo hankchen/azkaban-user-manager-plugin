@@ -87,6 +87,7 @@ azkaban.CreateUserView = Backbone.View.extend({
     var password = $('#passwd').val();
     var roles = $('#userRoles').val();
     var proxyUser = $('#proxyUser').val();
+    var userGroup = $('#userGroup').val();
     console.log("Creating User");
     $.ajax({
       async: "false",
@@ -99,7 +100,8 @@ azkaban.CreateUserView = Backbone.View.extend({
         email: email,
         passwd: password,
         userRoles:roles,
-        proxyuser:proxyUser
+        proxyuser:proxyUser,
+        userGroup:userGroup
 
       },
       success: function (data) {

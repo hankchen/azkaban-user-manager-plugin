@@ -52,9 +52,11 @@ public class JdbcUserHandlerSet {
 
     public static class GroupResultHandler implements ResultSetHandler<List<Pair<Integer,String>>>{
         public static String SELECT_All_GROUP =
-                "SELECT id,name FROM groups";
+                "SELECT id,name from groups";
         public static String SELECT_GROUP_BY_USER =
                 "select g.id,g.name from user_groups ug join groups g on ug.group_id=g.id where ug.user_id=?";
+        public static String SELECT_MULT_GROUP_BY_NAME =
+                "select id,name from groups where name in(?)";
         @Override
         public List<Pair<Integer,String>> handle(ResultSet rs) throws SQLException {
             if(!rs.next())
@@ -94,14 +96,21 @@ public class JdbcUserHandlerSet {
                 "select name from users where name=?";
         public static String SELECT_GROUP_BY_NAME=
                 "select name from groups where name=?";
+        public static String SELECT_PERMISSION_BY_ROLE=
+                "select permission from roles where name = ?";
+
 
     }
     public static class UpdateHandler{
         public static String INSERT_USER =
-                "insert into users(name,email,password,roles,agent_user) values (?,?, ?,?,?)";
+                "insert into users(name,email,password,roles,agent_user) values (?,?,?,?,?);";
 
         public static String DELETE_USER=
                 "delete from users where name=?";
+
+        public static String INSERT_GROUP =
+                "insert into user_groups(user_id,group_id) values(?,?)";
+
     }
 
 }
