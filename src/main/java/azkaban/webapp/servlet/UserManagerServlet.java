@@ -6,6 +6,7 @@ import azkaban.server.HttpRequestUtils;
 import azkaban.server.session.Session;
 import azkaban.user.*;
 import azkaban.utils.Props;
+import azkaban.utils.Triple;
 import azkaban.webapp.AzkabanWebServer;
 import org.apache.log4j.Logger;
 
@@ -14,7 +15,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.HashMap;
 
 /**
@@ -64,13 +64,49 @@ public class UserManagerServlet extends LoginAbstractAzkabanServlet {
                 handleAddUserView(request, response, session);
             } else if (action.equals("deleteUser")) {
                 handleDeleteUserView(request, response, session);
+            }else if(action.equals("loadUpdateUser")){
+
             }
         } else {
             handleGet(request, response, session);
         }
 
     }
+    private void handleLoadUserView(HttpServletRequest req,
+                                      HttpServletResponse resp, Session session) throws IOException {
+        User user = session.getUser();
+        String message = null;
+        String status = ERROR_PARAM;
+        String action = null;
+        HashMap<String, Object> params = new HashMap<String, Object>();
+        if (!user.isInGroup("admin")) {
+            message = "User " + user.getUserId()
+                    + " doesn't have no privilege for user manager.";
+            logger.info(message);
+            status = ERROR_PARAM;
+            params.put(status, message);
+        } else {
+            try {
+                final String username = getParam(req, "userId");
+                Triple<Integer,String,User> u = jdbcUM.getUserByName(username);
+                status = "success";
+                params.put("username", u.getThird().getUserId());
+                params.put("status", status);
+            } catch (ServletException e) {
+                message = e.getMessage();
+                status = ERROR_PARAM;
+                params.put("status", status);
+                params.put("message", message);
+            } catch (UserManagerException e) {
+                message = e.getMessage();
+                status = ERROR_PARAM;
+                params.put("status", status);
+                params.put("message", message);
+            }
 
+        }
+        this.writeJSON(resp, params);
+    }
     private void handleDeleteUserView(HttpServletRequest req,
                                       HttpServletResponse resp, Session session) throws IOException {
         User user = session.getUser();

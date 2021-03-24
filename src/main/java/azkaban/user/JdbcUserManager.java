@@ -53,7 +53,20 @@ public class JdbcUserManager implements UserManager {
         return ls;
 
     }
-
+    public Triple<Integer,String,User> getUserByName(String username) throws UserManagerException {
+        Triple<Integer,String,User> userInfo=null;
+        try {
+            List<Triple<Integer,String,User>> userList=this.dbOperator.query(
+                    UserResultHandler.SELECT_USER_BY_NAME,new UserResultHandler(),username);
+            if(userList.size()==1){
+                userInfo=userList.get(0);
+            }
+        } catch (SQLException e) {
+            logger.error("Get user ERROR", e.fillInStackTrace());
+            throw new UserManagerException("Get user ERROR",e);
+        }
+        return userInfo;
+    }
 
     public User getUser(String username, String password) throws UserManagerException {
         User user = null;
@@ -196,6 +209,9 @@ public class JdbcUserManager implements UserManager {
                         permission.addPermission(Permission.Type.METRICS);
                 }
 
+            }
+            if (permission.getTypes().contains(Permission.Type.ADMIN)){
+                permission=new Permission(Permission.Type.ADMIN);
             }
         } catch (SQLException e) {
             logger.error(e.getMessage());
